@@ -235,3 +235,10 @@ export default function App() {
                         <ProductCard key={product.id} product={product} />
                     ))}
                 </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
