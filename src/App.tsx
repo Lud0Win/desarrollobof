@@ -237,10 +237,10 @@ const App = () => {
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
-                type="text"
-                placeholder="Busca productos, marcas o categorías..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                type="text",
+                placeholder="Busca productos, marcas o categorías...",
+                value={searchTerm},
+                onChange={(e) => setSearchTerm(e.target.value)},
                 className="w-full pl-12 pr-4 py-4 text-lg border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg"
               />
             </div>
@@ -256,8 +256,8 @@ const App = () => {
               const IconComponent = category.icon;
               return (
                 <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
+                  key={category.id},
+                  onClick={() => setSelectedCategory(category.id)},
                   className={`flex items-center px-4 py-2 rounded-full font-medium transition-all duration-200 ${
                     selectedCategory === category.id
                       ? 'bg-blue-600 text-white shadow-lg'
