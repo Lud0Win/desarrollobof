@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 
 // Mockup de productos
 const mockProducts = [
