@@ -1,6 +1,6 @@
 // src/App.tsx
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Star, ShoppingCart, TrendingUp, Award, Clock, Package } from 'lucide-react';
+import { Search, Star, ShoppingCart, TrendingUp, Award, Clock, Package } from 'lucide-react';
 
 interface Store {
   name: string;
