@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown, Frown } from 'lucide-react';
+import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown, Frown, Smartphone, Headphones, Laptop, Mouse } from 'lucide-react';
 
 // Interfaz para definir la estructura de un producto
 interface Product {
@@ -11,6 +11,7 @@ interface Product {
   discount?: number;
   rating: number;
   reviewCount: number;
+  category: string;
 }
 
 // Datos de ejemplo para los productos
@@ -24,6 +25,7 @@ const mockProducts: Product[] = [
     discount: 9,
     rating: 4.8,
     reviewCount: 1250,
+    category: 'tech',
   },
   {
     id: 2,
@@ -32,6 +34,7 @@ const mockProducts: Product[] = [
     price: 349.99,
     rating: 4.9,
     reviewCount: 2340,
+    category: 'audio',
   },
   {
     id: 3,
@@ -42,6 +45,7 @@ const mockProducts: Product[] = [
     discount: 15,
     rating: 4.6,
     reviewCount: 890,
+    category: 'tech',
   },
   {
     id: 4,
@@ -50,6 +54,7 @@ const mockProducts: Product[] = [
     price: 1499.99,
     rating: 4.7,
     reviewCount: 450,
+    category: 'laptops',
   },
   {
     id: 5,
@@ -60,6 +65,7 @@ const mockProducts: Product[] = [
     discount: 17,
     rating: 4.9,
     reviewCount: 3120,
+    category: 'accessories',
   },
   {
     id: 6,
@@ -68,6 +74,7 @@ const mockProducts: Product[] = [
     price: 139.99,
     rating: 4.8,
     reviewCount: 15800,
+    category: 'tech',
   },
   {
     id: 7,
@@ -78,6 +85,7 @@ const mockProducts: Product[] = [
     discount: 20,
     rating: 4.7,
     reviewCount: 780,
+    category: 'accessories',
   },
   {
     id: 8,
@@ -86,7 +94,16 @@ const mockProducts: Product[] = [
     price: 159.00,
     rating: 4.6,
     reviewCount: 950,
+    category: 'home',
   },
+];
+
+const mockCategories = [
+    { name: 'Tecnología', icon: Smartphone, slug: 'tech' },
+    { name: 'Audio', icon: Headphones, slug: 'audio' },
+    { name: 'Portátiles', icon: Laptop, slug: 'laptops' },
+    { name: 'Accesorios', icon: Mouse, slug: 'accessories' },
+    { name: 'Hogar', icon: Home, slug: 'home' }
 ];
 
 type View = 'home' | 'categories' | 'favorites' | 'account';
@@ -277,6 +294,25 @@ const ProductGrid: React.FC<{
     );
 };
 
+// Componente para la sección de categorías
+const CategoryHighlights = () => {
+    return (
+      <div className="mb-10">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Explora Categorías</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          {mockCategories.map(category => (
+            <button key={category.slug} className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group">
+              <div className="flex items-center justify-center h-16 w-16 bg-indigo-100 rounded-full group-hover:bg-indigo-500 transition-colors duration-300">
+                <category.icon size={32} className="text-indigo-600 group-hover:text-white transition-colors duration-300" />
+              </div>
+              <span className="mt-3 text-sm font-semibold text-gray-800">{category.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+};
+
 
 // Componente principal de la aplicación
 export default function App() {
@@ -339,6 +375,7 @@ export default function App() {
             <div className="container mx-auto">
                 {currentView === 'home' && (
                     <>
+                        <CategoryHighlights />
                         <div className="flex justify-between items-center mb-6">
                             <h1 className="text-2xl font-bold text-gray-900">Productos Populares</h1>
                             <button className="flex items-center gap-2 text-sm font-medium text-gray-600 bg-white border rounded-lg px-3 py-1.5 hover:bg-gray-50">
