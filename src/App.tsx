@@ -173,7 +173,11 @@ const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, o
 
 
 // Componente para la cabecera
-const Header: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) => {
+const Header: React.FC<{ 
+  onMenuClick: () => void;
+  searchTerm: string;
+  onSearchChange: (value: string) => void; 
+}> = ({ onMenuClick, searchTerm, onSearchChange }) => {
   return (
     <header className="bg-white/80 backdrop-blur-sm shadow-sm p-4 sticky top-0 z-10">
       <div className="container mx-auto flex items-center justify-between gap-4">
@@ -187,6 +191,8 @@ const Header: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) => {
               type="text"
               placeholder="Buscar productos, marcas y más..."
               className="w-full px-4 py-2 pl-10 border rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 focus:bg-white transition-all"
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
             />
             <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
@@ -208,7 +214,15 @@ const Header: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) => {
 // Componente principal de la aplicación
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [products, setProducts] = useState(mockProducts); // Para futura funcionalidad de búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Nota: No usamos setProducts para filtrar. Filtramos la lista original cada vez.
+  // setProducts se usaría si, por ejemplo, cargáramos nuevos productos de una API.
+  const [products] = useState(mockProducts); 
+
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="bg-gray-50 min-h-screen text-gray-800">
@@ -216,7 +230,11 @@ export default function App() {
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         
         <div className="flex-1 flex flex-col min-w-0">
-          <Header onMenuClick={() => setSidebarOpen(true)} />
+          <Header 
+            onMenuClick={() => setSidebarOpen(true)}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+          />
 
           <main className="flex-1 p-4 sm:p-6 lg:p-8">
             <div className="container mx-auto">
@@ -231,7 +249,7 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {products.map((product) => (
+                    {filteredProducts.map((product) => (
                         <ProductCard key={product.id} product={product} />
                     ))}
                 </div>
@@ -242,3 +260,4 @@ export default function App() {
     </div>
   );
 }
+
