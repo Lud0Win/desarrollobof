@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown } from 'lucide-react';
 
 // Interfaz para definir la estructura de un producto
@@ -106,7 +106,17 @@ const Logo = () => (
   
 
 // Componente para la tarjeta de producto
-const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+const ProductCard: React.FC<{ 
+  product: Product;
+  isFavorite: boolean;
+  onToggleFavorite: (id: number) => void;
+}> = ({ product, isFavorite, onToggleFavorite }) => {
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Evita que se active el click de la tarjeta (navegación)
+    onToggleFavorite(product.id);
+  };
+
   return (
     <div 
       className="bg-white rounded-2xl shadow-sm overflow-hidden group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer border border-gray-100"
@@ -123,6 +133,12 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
             -{product.discount}%
           </span>
         )}
+        <button 
+          onClick={handleFavoriteClick}
+          className="absolute top-3 left-3 bg-white/70 backdrop-blur-sm p-1.5 rounded-full text-gray-600 hover:text-red-500 transition-colors duration-200"
+        >
+          <Heart size={20} className={`${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+        </button>
       </div>
       <div className="p-4">
         <h3 className="font-semibold text-base text-gray-800 truncate">{product.name}</h3>
@@ -190,7 +206,8 @@ const Header: React.FC<{
   onMenuClick: () => void;
   searchTerm: string;
   onSearchChange: (value: string) => void; 
-}> = ({ onMenuClick, searchTerm, onSearchChange }) => {
+  favoriteCount: number;
+}> = ({ onMenuClick, searchTerm, onSearchChange, favoriteCount }) => {
   return (
     <header className="bg-white shadow-md p-4 sticky top-0 z-10 h-20 flex items-center">
       <div className="container mx-auto flex items-center justify-between gap-4">
@@ -213,8 +230,13 @@ const Header: React.FC<{
           </div>
         </div>
         <div className="flex items-center gap-4">
-            <a href="#" className="text-gray-600 hover:text-indigo-600">
+            <a href="#" className="relative text-gray-600 hover:text-indigo-600">
                 <Heart size={24} />
+                {favoriteCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-indigo-600 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                    {favoriteCount}
+                  </span>
+                )}
             </a>
             <a href="#" className="text-gray-600 hover:text-indigo-600">
                 <User size={24} />
@@ -230,8 +252,38 @@ const Header: React.FC<{
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  
   const [products] = useState(mockProducts); 
+  
+  // Estado para los favoritos, inicializado desde localStorage
+  const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
+    try {
+      const storedFavorites = window.localStorage.getItem('favoriteProducts');
+      return storedFavorites ? JSON.parse(storedFavorites) : [];
+    } catch (error) {
+      console.error("Error al leer favoritos de localStorage", error);
+      return [];
+    }
+  });
+
+  // Efecto para guardar los favoritos en localStorage cada vez que cambian
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('favoriteProducts', JSON.stringify(favoriteIds));
+    } catch (error) {
+      console.error("Error al guardar favoritos en localStorage", error);
+    }
+  }, [favoriteIds]);
+
+  // Función para añadir o quitar un producto de favoritos
+  const handleToggleFavorite = (productId: number) => {
+    setFavoriteIds(prevIds => {
+      if (prevIds.includes(productId)) {
+        return prevIds.filter(id => id !== productId); // Quitar de favoritos
+      } else {
+        return [...prevIds, productId]; // Añadir a favoritos
+      }
+    });
+  };
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -247,6 +299,7 @@ export default function App() {
             onMenuClick={() => setSidebarOpen(true)}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
+            favoriteCount={favoriteIds.length}
           />
 
           <main className="flex-1 p-4 sm:p-6 lg:p-8">
@@ -263,7 +316,12 @@ export default function App() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredProducts.map((product) => (
-                        <ProductCard key={product.id} product={product} />
+                        <ProductCard 
+                          key={product.id} 
+                          product={product}
+                          isFavorite={favoriteIds.includes(product.id)}
+                          onToggleFavorite={handleToggleFavorite}
+                        />
                     ))}
                 </div>
             </div>
@@ -273,5 +331,4 @@ export default function App() {
     </div>
   );
 }
-
 
