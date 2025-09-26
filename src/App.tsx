@@ -132,13 +132,13 @@ const Logo = () => (
 );
 
 // Componente Hero Banner
-const HeroBanner = () => (
+const HeroBanner: React.FC<{ onExploreClick: () => void }> = ({ onExploreClick }) => (
     <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 md:p-12 mb-10 text-white shadow-lg relative overflow-hidden">
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full"></div>
         <div className="absolute -bottom-16 -left-10 w-48 h-48 bg-white/10 rounded-full"></div>
         <h2 className="text-3xl md:text-5xl font-extrabold mb-4 tracking-tight relative z-10">Encuentra el Mejor Precio</h2>
         <p className="text-lg md:text-xl max-w-2xl text-indigo-100 relative z-10">Compara miles de productos de las mejores tiendas en un solo lugar. Ahorrar nunca fue tan fácil.</p>
-        <button className="mt-6 bg-white text-indigo-600 font-bold py-2.5 px-6 rounded-full hover:bg-indigo-100 transition-transform duration-300 transform hover:scale-105 shadow relative z-10 flex items-center gap-2">
+        <button onClick={onExploreClick} className="mt-6 bg-white text-indigo-600 font-bold py-2.5 px-6 rounded-full hover:bg-indigo-100 transition-transform duration-300 transform hover:scale-105 shadow relative z-10 flex items-center gap-2">
             <Zap size={18} />
             Explorar Ofertas
         </button>
@@ -253,7 +253,7 @@ const ProductGrid: React.FC<{ products: Product[]; favoriteIds: number[]; onTogg
     </div>
 );
 
-// Componente para la sección de categorías
+// Componente para la sección de categorías en la página de inicio
 const CategoryHighlights: React.FC<{ selectedCategory: string | null; onCategorySelect: (slug: string | null) => void; }> = ({ selectedCategory, onCategorySelect }) => {
     const categories = [{ name: 'Todos', icon: LayoutGrid, slug: null }, ...mockCategories];
     return (
@@ -301,6 +301,48 @@ const SortDropdown: React.FC<{ currentSort: SortOption; onSortChange: (option: S
     );
 };
 
+// Componente para la vista de la página de Categorías
+const CategoriesView: React.FC<{ onCategorySelect: (slug: string) => void; }> = ({ onCategorySelect }) => (
+    <div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Explorar Categorías</h1>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {mockCategories.map(category => (
+                <button key={category.slug} onClick={() => onCategorySelect(category.slug)} className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group">
+                    <div className="flex items-center justify-center h-20 w-20 bg-indigo-100 rounded-full group-hover:bg-indigo-500 transition-colors duration-300">
+                        <category.icon size={40} className="text-indigo-600 group-hover:text-white transition-colors duration-300" />
+                    </div>
+                    <span className="mt-4 text-base font-semibold text-gray-800">{category.name}</span>
+                </button>
+            ))}
+        </div>
+    </div>
+);
+
+// Componente para la vista de productos de una categoría específica
+const CategoryProductsView: React.FC<{
+  categoryName: string;
+  products: Product[];
+  favoriteIds: number[];
+  onToggleFavorite: (id: number) => void;
+  currentSort: SortOption;
+  onSortChange: (option: SortOption) => void;
+  onNavigateHome: () => void;
+}> = ({ categoryName, products, favoriteIds, onToggleFavorite, currentSort, onSortChange, onNavigateHome }) => (
+  <div>
+    <div className="mb-4 text-sm text-gray-500">
+      <button onClick={onNavigateHome} className="hover:text-indigo-600 font-medium">Inicio</button>
+      <span className="mx-2">/</span>
+      <span className="text-gray-800 font-medium">{categoryName}</span>
+    </div>
+    <div className="flex justify-between items-center mb-6">
+      <h1 className="text-3xl font-bold text-gray-900">{categoryName}</h1>
+      <SortDropdown currentSort={currentSort} onSortChange={onSortChange} />
+    </div>
+    <ProductGrid products={products} favoriteIds={favoriteIds} onToggleFavorite={onToggleFavorite} />
+  </div>
+);
+
+
 // Componente principal de la aplicación
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -309,6 +351,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>('home');
   const [sortOption, setSortOption] = useState<SortOption>('default');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const productsSectionRef = useRef<HTMLDivElement>(null);
   
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
     try {
@@ -324,6 +367,29 @@ export default function App() {
 
   const handleToggleFavorite = (productId: number) => {
     setFavoriteIds(prevIds => prevIds.includes(productId) ? prevIds.filter(id => id !== productId) : [...prevIds, productId]);
+  };
+
+  const handleExploreOffers = () => {
+    productsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  
+  const handleNavigateHome = () => {
+    setCurrentView('home');
+    setSelectedCategory(null);
+  };
+  
+  const handleSelectCategory = (slug: string | null) => {
+      setSelectedCategory(slug);
+  };
+
+  const handleNavigate = (view: View) => {
+      if (view === 'home') {
+          handleNavigateHome();
+      } else {
+          setCurrentView(view);
+          // Opcional: limpiar la categoría si se navega a otra sección principal
+          setSelectedCategory(null);
+      }
   };
 
   const processedProducts = (() => {
@@ -343,39 +409,74 @@ export default function App() {
   const favoriteProducts = products.filter(product => favoriteIds.includes(product.id));
   const currentCategoryName = mockCategories.find(c => c.slug === selectedCategory)?.name || 'Productos Populares';
 
+  const renderMainContent = () => {
+      if (currentView === 'home' && !selectedCategory) {
+          return (
+              <>
+                  <HeroBanner onExploreClick={handleExploreOffers} />
+                  <CategoryHighlights selectedCategory={selectedCategory} onCategorySelect={handleSelectCategory} />
+                  <div ref={productsSectionRef} className="flex justify-between items-center mb-6">
+                      <h1 className="text-2xl font-bold text-gray-900">Productos Populares</h1>
+                      <SortDropdown currentSort={sortOption} onSortChange={setSortOption} />
+                  </div>
+                  <ProductGrid products={processedProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} />
+              </>
+          );
+      }
+
+      if (currentView === 'home' && selectedCategory) {
+          return (
+              <CategoryProductsView
+                categoryName={currentCategoryName}
+                products={processedProducts}
+                favoriteIds={favoriteIds}
+                onToggleFavorite={handleToggleFavorite}
+                currentSort={sortOption}
+                onSortChange={setSortOption}
+                onNavigateHome={handleNavigateHome}
+              />
+          );
+      }
+
+      if (currentView === 'categories') {
+          return (
+              <CategoriesView onCategorySelect={(slug) => {
+                  setCurrentView('home');
+                  setSelectedCategory(slug);
+              }} />
+          );
+      }
+      
+      if (currentView === 'favorites') {
+          return (
+              <>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-6">Mis Favoritos</h1>
+                  {favoriteProducts.length > 0 ? (
+                      <ProductGrid products={favoriteProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} />
+                  ) : (
+                      <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm">
+                          <Frown className="mx-auto h-12 w-12 text-gray-400" />
+                          <h3 className="mt-2 text-lg font-medium text-gray-900">Aún no tienes favoritos</h3>
+                          <p className="mt-1 text-sm text-gray-500">Haz clic en el corazón de un producto para guardarlo aquí.</p>
+                      </div>
+                  )}
+              </>
+          );
+      }
+
+      // Placeholder for other views like 'account'
+      return <div>Vista no implementada</div>;
+  };
+
   return (
     <div className="bg-gray-100 min-h-screen text-gray-800">
       <div className="flex">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} currentView={currentView} onNavigate={setCurrentView} />
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} currentView={currentView} onNavigate={handleNavigate} />
         <div className="flex-1 flex flex-col min-w-0">
           <Header onMenuClick={() => setSidebarOpen(true)} searchTerm={searchTerm} onSearchChange={setSearchTerm} favoriteCount={favoriteIds.length} />
           <main className="flex-1 p-4 sm:p-6 lg:p-8">
             <div className="container mx-auto">
-                {currentView === 'home' && (
-                    <>
-                        <HeroBanner />
-                        <CategoryHighlights selectedCategory={selectedCategory} onCategorySelect={setSelectedCategory} />
-                        <div className="flex justify-between items-center mb-6">
-                            <h1 className="text-2xl font-bold text-gray-900">{currentCategoryName}</h1>
-                            <SortDropdown currentSort={sortOption} onSortChange={setSortOption} />
-                        </div>
-                        <ProductGrid products={processedProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} />
-                    </>
-                )}
-                {currentView === 'favorites' && (
-                    <>
-                        <h1 className="text-2xl font-bold text-gray-900 mb-6">Mis Favoritos</h1>
-                        {favoriteProducts.length > 0 ? (
-                            <ProductGrid products={favoriteProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} />
-                        ) : (
-                            <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm">
-                                <Frown className="mx-auto h-12 w-12 text-gray-400" />
-                                <h3 className="mt-2 text-lg font-medium text-gray-900">Aún no tienes favoritos</h3>
-                                <p className="mt-1 text-sm text-gray-500">Haz clic en el corazón de un producto para guardarlo aquí.</p>
-                            </div>
-                        )}
-                    </>
-                )}
+                {renderMainContent()}
             </div>
           </main>
         </div>
