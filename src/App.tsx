@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown } from 'lucide-react';
+import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown, Frown } from 'lucide-react';
 
 // Interfaz para definir la estructura de un producto
 interface Product {
@@ -89,6 +89,8 @@ const mockProducts: Product[] = [
   },
 ];
 
+type View = 'home' | 'categories' | 'favorites' | 'account';
+
 
 // --- COMPONENTES ---
 
@@ -164,12 +166,17 @@ const ProductCard: React.FC<{
 };
 
 // Componente para la barra lateral
-const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+const Sidebar: React.FC<{ 
+    isOpen: boolean; 
+    onClose: () => void;
+    currentView: View;
+    onNavigate: (view: View) => void;
+}> = ({ isOpen, onClose, currentView, onNavigate }) => {
     const navItems = [
-        { icon: Home, label: 'Inicio' },
-        { icon: LayoutGrid, label: 'Categorías' },
-        { icon: Heart, label: 'Favoritos' },
-        { icon: User, label: 'Mi Cuenta' },
+        { view: 'home' as View, icon: Home, label: 'Inicio' },
+        { view: 'categories' as View, icon: LayoutGrid, label: 'Categorías' },
+        { view: 'favorites' as View, icon: Heart, label: 'Favoritos' },
+        { view: 'account' as View, icon: User, label: 'Mi Cuenta' },
     ];
 
     return (
@@ -183,12 +190,15 @@ const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, o
                 </div>
                 <nav className="p-4">
                     <ul className="space-y-2">
-                        {navItems.map((item, index) => (
-                            <li key={index}>
-                                <a href="#" className="flex items-center gap-3 px-3 py-2 text-gray-600 font-medium hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors">
+                        {navItems.map((item) => (
+                            <li key={item.view}>
+                                <button 
+                                    onClick={() => { onNavigate(item.view); onClose(); }} 
+                                    className={`w-full flex items-center gap-3 px-3 py-2 font-medium rounded-lg transition-colors ${currentView === item.view ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-indigo-50 hover:text-indigo-600'}`}
+                                >
                                     <item.icon size={20} />
                                     <span>{item.label}</span>
-                                </a>
+                                </button>
                             </li>
                         ))}
                     </ul>
@@ -247,14 +257,34 @@ const Header: React.FC<{
   );
 };
 
+// Componente reutilizable para la cuadrícula de productos
+const ProductGrid: React.FC<{
+    products: Product[];
+    favoriteIds: number[];
+    onToggleFavorite: (id: number) => void;
+}> = ({ products, favoriteIds, onToggleFavorite }) => {
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {products.map((product) => (
+                <ProductCard 
+                    key={product.id} 
+                    product={product}
+                    isFavorite={favoriteIds.includes(product.id)}
+                    onToggleFavorite={onToggleFavorite}
+                />
+            ))}
+        </div>
+    );
+};
+
 
 // Componente principal de la aplicación
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [products] = useState(mockProducts); 
+  const [currentView, setCurrentView] = useState<View>('home');
   
-  // Estado para los favoritos, inicializado desde localStorage
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
     try {
       const storedFavorites = window.localStorage.getItem('favoriteProducts');
@@ -265,7 +295,6 @@ export default function App() {
     }
   });
 
-  // Efecto para guardar los favoritos en localStorage cada vez que cambian
   useEffect(() => {
     try {
       window.localStorage.setItem('favoriteProducts', JSON.stringify(favoriteIds));
@@ -274,25 +303,29 @@ export default function App() {
     }
   }, [favoriteIds]);
 
-  // Función para añadir o quitar un producto de favoritos
   const handleToggleFavorite = (productId: number) => {
-    setFavoriteIds(prevIds => {
-      if (prevIds.includes(productId)) {
-        return prevIds.filter(id => id !== productId); // Quitar de favoritos
-      } else {
-        return [...prevIds, productId]; // Añadir a favoritos
-      }
-    });
+    setFavoriteIds(prevIds => 
+      prevIds.includes(productId) 
+        ? prevIds.filter(id => id !== productId) 
+        : [...prevIds, productId]
+    );
   };
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const favoriteProducts = products.filter(product => favoriteIds.includes(product.id));
+
   return (
     <div className="bg-gray-100 min-h-screen text-gray-800">
       <div className="flex">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar 
+            isOpen={sidebarOpen} 
+            onClose={() => setSidebarOpen(false)}
+            currentView={currentView}
+            onNavigate={setCurrentView}
+        />
         
         <div className="flex-1 flex flex-col min-w-0">
           <Header 
@@ -304,26 +337,32 @@ export default function App() {
 
           <main className="flex-1 p-4 sm:p-6 lg:p-8">
             <div className="container mx-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">Productos Populares</h1>
-                    <div className="relative">
-                        <button className="flex items-center gap-2 text-sm font-medium text-gray-600 bg-white border rounded-lg px-3 py-1.5 hover:bg-gray-50">
-                            Ordenar por <ChevronDown size={16} />
-                        </button>
-                        {/* Dropdown menu can be added here */}
-                    </div>
-                </div>
+                {currentView === 'home' && (
+                    <>
+                        <div className="flex justify-between items-center mb-6">
+                            <h1 className="text-2xl font-bold text-gray-900">Productos Populares</h1>
+                            <button className="flex items-center gap-2 text-sm font-medium text-gray-600 bg-white border rounded-lg px-3 py-1.5 hover:bg-gray-50">
+                                Ordenar por <ChevronDown size={16} />
+                            </button>
+                        </div>
+                        <ProductGrid products={filteredProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} />
+                    </>
+                )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredProducts.map((product) => (
-                        <ProductCard 
-                          key={product.id} 
-                          product={product}
-                          isFavorite={favoriteIds.includes(product.id)}
-                          onToggleFavorite={handleToggleFavorite}
-                        />
-                    ))}
-                </div>
+                {currentView === 'favorites' && (
+                    <>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-6">Mis Favoritos</h1>
+                        {favoriteProducts.length > 0 ? (
+                            <ProductGrid products={favoriteProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} />
+                        ) : (
+                            <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm">
+                                <Frown className="mx-auto h-12 w-12 text-gray-400" />
+                                <h3 className="mt-2 text-lg font-medium text-gray-900">Aún no tienes favoritos</h3>
+                                <p className="mt-1 text-sm text-gray-500">Haz clic en el corazón de un producto para guardarlo aquí.</p>
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
           </main>
         </div>
