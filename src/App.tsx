@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown, Frown, Smartphone, Headphones, Laptop, Mouse } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown, Frown, Smartphone, Headphones, Laptop, Mouse, Check, Star } from 'lucide-react';
 
 // Interfaz para definir la estructura de un producto
 interface Product {
@@ -107,6 +107,14 @@ const mockCategories = [
 ];
 
 type View = 'home' | 'categories' | 'favorites' | 'account';
+type SortOption = 'default' | 'price-asc' | 'price-desc' | 'rating-desc';
+
+const sortOptions: { value: SortOption; label: string }[] = [
+    { value: 'default', label: 'Recomendados' },
+    { value: 'rating-desc', label: 'Mejor valorados' },
+    { value: 'price-asc', label: 'Precio: bajo a alto' },
+    { value: 'price-desc', label: 'Precio: alto a bajo' },
+];
 
 
 // --- COMPONENTES ---
@@ -171,11 +179,10 @@ const ProductCard: React.FC<{
         </div>
         <div className="mt-3 flex items-center text-sm text-gray-600">
            <div className="flex items-center gap-1">
-            {[...Array(5)].map((_, i) => (
-                <svg key={i} className={`w-4 h-4 ${i < Math.round(product.rating) ? 'text-yellow-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-            ))}
+            <Star size={16} className="text-yellow-400" />
+            <span className="font-bold text-gray-800">{product.rating}</span>
            </div>
-          <span className="ml-2">({product.reviewCount})</span>
+          <span className="ml-2">({product.reviewCount} reseñas)</span>
         </div>
       </div>
     </div>
@@ -295,13 +302,13 @@ const ProductGrid: React.FC<{
 };
 
 // Componente para la sección de categorías
-const CategoryHighlights = () => {
+const CategoryHighlights: React.FC<{onCategorySelect: (slug: string) => void}> = ({onCategorySelect}) => {
     return (
       <div className="mb-10">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Explora Categorías</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
           {mockCategories.map(category => (
-            <button key={category.slug} className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group">
+            <button key={category.slug} onClick={() => onCategorySelect(category.slug)} className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group">
               <div className="flex items-center justify-center h-16 w-16 bg-indigo-100 rounded-full group-hover:bg-indigo-500 transition-colors duration-300">
                 <category.icon size={32} className="text-indigo-600 group-hover:text-white transition-colors duration-300" />
               </div>
@@ -313,6 +320,57 @@ const CategoryHighlights = () => {
     );
 };
 
+// Componente para el menú desplegable de ordenamiento
+const SortDropdown: React.FC<{
+    currentSort: SortOption;
+    onSortChange: (option: SortOption) => void;
+}> = ({ currentSort, onSortChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const currentLabel = sortOptions.find(opt => opt.value === currentSort)?.label;
+
+    // Hook para cerrar el dropdown si se hace clic fuera de él
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center gap-2 text-sm font-medium text-gray-600 bg-white border rounded-lg px-3 py-1.5 hover:bg-gray-50"
+            >
+                <span>{currentLabel}</span>
+                <ChevronDown size={16} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-20 border">
+                    <ul className="py-1">
+                        {sortOptions.map(option => (
+                            <li key={option.value}>
+                                <button 
+                                    onClick={() => { onSortChange(option.value); setIsOpen(false); }}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 flex items-center justify-between"
+                                >
+                                    {option.label}
+                                    {currentSort === option.value && <Check size={16} className="text-indigo-600" />}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 // Componente principal de la aplicación
 export default function App() {
@@ -320,6 +378,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [products] = useState(mockProducts); 
   const [currentView, setCurrentView] = useState<View>('home');
+  const [sortOption, setSortOption] = useState<SortOption>('default');
   
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
     try {
@@ -347,9 +406,30 @@ export default function App() {
     );
   };
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Lógica de filtrado y ordenamiento
+  const processedProducts = (() => {
+    let result = products.filter(product =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Creamos una copia para no mutar el estado original
+    const sortedResult = [...result];
+
+    switch(sortOption) {
+        case 'price-asc':
+            sortedResult.sort((a, b) => a.price - b.price);
+            break;
+        case 'price-desc':
+            sortedResult.sort((a, b) => b.price - a.price);
+            break;
+        case 'rating-desc':
+            sortedResult.sort((a, b) => b.rating - a.rating);
+            break;
+        // El caso 'default' no necesita ordenamiento extra
+    }
+
+    return sortedResult;
+  })();
 
   const favoriteProducts = products.filter(product => favoriteIds.includes(product.id));
 
@@ -375,14 +455,12 @@ export default function App() {
             <div className="container mx-auto">
                 {currentView === 'home' && (
                     <>
-                        <CategoryHighlights />
+                        <CategoryHighlights onCategorySelect={(slug) => alert(`Filtrando por categoría: ${slug}`)} />
                         <div className="flex justify-between items-center mb-6">
                             <h1 className="text-2xl font-bold text-gray-900">Productos Populares</h1>
-                            <button className="flex items-center gap-2 text-sm font-medium text-gray-600 bg-white border rounded-lg px-3 py-1.5 hover:bg-gray-50">
-                                Ordenar por <ChevronDown size={16} />
-                            </button>
+                            <SortDropdown currentSort={sortOption} onSortChange={setSortOption} />
                         </div>
-                        <ProductGrid products={filteredProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} />
+                        <ProductGrid products={processedProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} />
                     </>
                 )}
 
