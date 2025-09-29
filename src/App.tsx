@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown, Frown, Smartphone, Headphones, Laptop, Mouse, Check, Star, Zap, ArrowLeft, ShieldCheck, Truck, ShoppingCart, ServerCrash } from 'lucide-react';
+import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown, Frown, Smartphone, Headphones, Laptop, Mouse, Check, Star, Zap, ShieldCheck, Truck, ShoppingCart, ServerCrash } from 'lucide-react';
 
 // --- INTERFACES Y DATOS ---
 
@@ -625,4 +625,5 @@ export default function App() {
     </div>
   );
 }
+
 
