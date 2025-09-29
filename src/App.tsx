@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown, Frown, Smartphone, Headphones, Laptop, Mouse, Check, Star, Zap, ShieldCheck, Truck, ShoppingCart, ServerCrash } from 'lucide-react';
+import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown, Frown, Smartphone, Headphones, Laptop, Mouse, Check, Star, Zap, ShieldCheck, Truck, ShoppingCart, ServerCrash, LoaderCircle } from 'lucide-react';
 
 // --- INTERFACES Y DATOS ---
 
@@ -13,7 +13,7 @@ interface StorePrice {
 
 interface Category {
     name: string;
-    icon: keyof typeof iconComponents; // Usaremos el nombre del icono para buscarlo dinámicamente
+    icon: keyof typeof iconComponents;
     slug: string;
 }
 
@@ -31,16 +31,14 @@ interface Product {
   storePrices: StorePrice[];
 }
 
-// Mapeo de nombres de iconos a componentes de Lucide
-const iconComponents = {
-    Smartphone,
-    Headphones,
-    Laptop,
-    Mouse,
-    Home,
-    LayoutGrid
-};
+interface PaginatedResponse {
+    totalCount: number;
+    page: number;
+    limit: number;
+    data: Product[];
+}
 
+const iconComponents = { Smartphone, Headphones, Laptop, Mouse, Home, LayoutGrid };
 
 type View = 'home' | 'categories' | 'favorites' | 'account' | 'product-detail';
 type SortOption = 'default' | 'price-asc' | 'price-desc' | 'rating-desc';
@@ -52,6 +50,7 @@ const sortOptions: { value: SortOption; label: string }[] = [
     { value: 'price-desc', label: 'Precio: alto a bajo' },
 ];
 
+const PRODUCTS_PER_PAGE = 12;
 
 // --- COMPONENTES DE CARGA (SKELETONS) ---
 
@@ -302,6 +301,7 @@ const CategoryProductsView: React.FC<{
 );
 
 const PriceComparisonList: React.FC<{ prices: StorePrice[] }> = ({ prices }) => {
+    if (!prices || prices.length === 0) return null;
     const sortedPrices = [...prices].sort((a, b) => a.price - b.price);
     return (
         <div className="mt-8">
@@ -333,14 +333,64 @@ const PriceComparisonList: React.FC<{ prices: StorePrice[] }> = ({ prices }) => 
 };
 
 const ProductDetailView: React.FC<{
-    product: Product;
+    productId: number;
     isFavorite: boolean;
     onToggleFavorite: (id: number) => void;
     onBack: () => void;
     categories: Category[];
-}> = ({ product, isFavorite, onToggleFavorite, onBack, categories }) => {
-    const categoryName = categories.find(c => c.slug === product.category)?.name;
+}> = ({ productId, isFavorite, onToggleFavorite, onBack, categories }) => {
+    const [product, setProduct] = useState<Product | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const priceListRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const fetchProduct = async () => {
+            setIsLoading(true);
+            try {
+                const response = await fetch(`https://mi-api-supabase.vercel.app/products/${productId}`);
+                if (!response.ok) throw new Error('Producto no encontrado');
+                const data = await response.json();
+
+                // Añadir datos de prueba para la comparación de precios
+                data.storePrices = [
+                    { store: 'ElectroShop', logo: 'https://placehold.co/100x40/1e40af/ffffff?text=ElectroShop', price: data.price, shipping: 'Envío gratis', url: '#' },
+                    { store: 'TecnoWorld', logo: 'https://placehold.co/100x40/6d28d9/ffffff?text=TecnoWorld', price: data.price + 15.50, shipping: 'Envío en 3 días', url: '#' },
+                    { store: 'GadgetGalaxy', logo: 'https://placehold.co/100x40/be185d/ffffff?text=GadgetGalaxy', price: data.price - 5.00, shipping: 'Retiro en tienda', url: '#' }
+                ];
+
+                setProduct(data);
+            } catch (error) {
+                console.error("Error fetching product details:", error);
+                setProduct(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchProduct();
+    }, [productId]);
+
+    if (isLoading) {
+        return (
+            <div className="animate-pulse">
+                <div className="h-6 bg-gray-200 rounded w-1/3 mb-8"></div>
+                <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+                    <div className="bg-gray-200 h-96 rounded-2xl"></div>
+                    <div>
+                        <div className="h-10 bg-gray-200 rounded w-3/4 mb-4"></div>
+                        <div className="h-6 bg-gray-200 rounded w-1/2 mb-6"></div>
+                        <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded w-5/6 mb-8"></div>
+                        <div className="h-20 bg-gray-200 rounded-lg"></div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    
+    if (!product) return <div>Producto no encontrado.</div>;
+    
+    const categoryName = categories.find(c => c.slug === product.category)?.name;
     const handleCompareClick = () => {
         priceListRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -349,12 +399,7 @@ const ProductDetailView: React.FC<{
         <div>
             <div className="mb-4 text-sm text-gray-500">
                 <button onClick={onBack} className="hover:text-indigo-600 font-medium">Inicio</button>
-                {categoryName && (
-                    <>
-                        <span className="mx-2">/</span>
-                        <button onClick={onBack} className="hover:text-indigo-600 font-medium">{categoryName}</button>
-                    </>
-                )}
+                {categoryName && ( <> <span className="mx-2">/</span> <button onClick={onBack} className="hover:text-indigo-600 font-medium">{categoryName}</button> </> )}
             </div>
             <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
@@ -374,9 +419,7 @@ const ProductDetailView: React.FC<{
                        <span className="text-sm text-gray-600">Mejor precio encontrado</span>
                         <div className="flex items-baseline gap-3">
                            <span className="text-4xl font-extrabold text-gray-900">${product.price.toFixed(2)}</span>
-                           {product.originalPrice && (
-                               <span className="text-xl text-gray-500 line-through">${product.originalPrice.toFixed(2)}</span>
-                           )}
+                           {product.originalPrice && ( <span className="text-xl text-gray-500 line-through">${product.originalPrice.toFixed(2)}</span> )}
                         </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -391,9 +434,7 @@ const ProductDetailView: React.FC<{
                     </div>
                 </div>
             </div>
-            <div ref={priceListRef}>
-                <PriceComparisonList prices={product.storePrices || []} />
-            </div>
+            <div ref={priceListRef}> <PriceComparisonList prices={product.storePrices || []} /> </div>
         </div>
     );
 };
@@ -408,6 +449,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
   const [currentView, setCurrentView] = useState<View>('home');
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>('default');
@@ -415,31 +460,29 @@ export default function App() {
   const productsSectionRef = useRef<HTMLDivElement>(null);
   
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
-    try {
-      const storedFavorites = window.localStorage.getItem('favoriteProducts');
-      return storedFavorites ? JSON.parse(storedFavorites) : [];
-    } catch (error) { console.error("Error al leer favoritos de localStorage", error); return []; }
+    try { const storedFavorites = window.localStorage.getItem('favoriteProducts'); return storedFavorites ? JSON.parse(storedFavorites) : []; } 
+    catch (error) { console.error("Error al leer favoritos de localStorage", error); return []; }
   });
   
-  // Fetch data from API on component mount
+  // Fetch initial data
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
         try {
             setLoading(true);
             const [productsResponse, categoriesResponse] = await Promise.all([
-                fetch('https://mi-api-supabase.vercel.app/products'),
+                fetch(`https://mi-api-supabase.vercel.app/products?page=1&limit=${PRODUCTS_PER_PAGE}`),
                 fetch('https://mi-api-supabase.vercel.app/categories')
             ]);
             
-            if (!productsResponse.ok || !categoriesResponse.ok) {
-                throw new Error('No se pudo conectar con la API.');
-            }
-
-            const productsData = await productsResponse.json();
+            if (!productsResponse.ok || !categoriesResponse.ok) throw new Error('No se pudo conectar con la API.');
+            
+            const productsData: PaginatedResponse = await productsResponse.json();
             const categoriesData = await categoriesResponse.json();
             
-            setProducts(productsData);
+            setProducts(productsData.data);
+            setTotalProducts(productsData.totalCount);
             setCategories(categoriesData);
+            setCurrentPage(1);
             setError(null);
         } catch (err: any) {
             setError(err.message || 'Ocurrió un error inesperado.');
@@ -448,7 +491,7 @@ export default function App() {
             setLoading(false);
         }
     };
-    fetchData();
+    fetchInitialData();
   }, []);
 
   useEffect(() => {
@@ -456,42 +499,32 @@ export default function App() {
     catch (error) { console.error("Error al guardar favoritos en localStorage", error); }
   }, [favoriteIds]);
 
-  const handleToggleFavorite = (productId: number) => {
-    setFavoriteIds(prevIds => prevIds.includes(productId) ? prevIds.filter(id => id !== productId) : [...prevIds, productId]);
-  };
+  const handleLoadMore = async () => {
+    if (isLoadingMore || products.length >= totalProducts) return;
 
-  const handleExploreOffers = () => {
-    productsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-  
-  const handleNavigateHome = () => {
-    setCurrentView('home');
-    setSelectedCategory(null);
-    setSelectedProductId(null);
-  };
-  
-  const handleSelectCategory = (slug: string | null) => {
-      setSelectedCategory(slug);
-      setSelectedProductId(null); 
-  };
+    setIsLoadingMore(true);
+    try {
+        const nextPage = currentPage + 1;
+        const response = await fetch(`https://mi-api-supabase.vercel.app/products?page=${nextPage}&limit=${PRODUCTS_PER_PAGE}`);
+        if (!response.ok) throw new Error('No se pudieron cargar más productos.');
 
-  const handleNavigate = (view: View) => {
-      if (view === 'home') {
-          handleNavigateHome();
-      } else {
-          setCurrentView(view);
-          setSelectedCategory(null);
-          setSelectedProductId(null);
-      }
+        const newData: PaginatedResponse = await response.json();
+        setProducts(prevProducts => [...prevProducts, ...newData.data]);
+        setCurrentPage(nextPage);
+    } catch (err: any) {
+        console.error("Error al cargar más productos:", err);
+    } finally {
+        setIsLoadingMore(false);
+    }
   };
   
-  const handleProductClick = (id: number) => {
-    setSelectedProductId(id);
-  };
-  
-  const handleBackToList = () => {
-      setSelectedProductId(null);
-  };
+  const handleToggleFavorite = (productId: number) => { setFavoriteIds(prevIds => prevIds.includes(productId) ? prevIds.filter(id => id !== productId) : [...prevIds, productId]); };
+  const handleExploreOffers = () => { productsSectionRef.current?.scrollIntoView({ behavior: 'smooth' }); };
+  const handleNavigateHome = () => { setCurrentView('home'); setSelectedCategory(null); setSelectedProductId(null); };
+  const handleSelectCategory = (slug: string | null) => { setSelectedCategory(slug); setSelectedProductId(null); };
+  const handleNavigate = (view: View) => { if (view === 'home') { handleNavigateHome(); } else { setCurrentView(view); setSelectedCategory(null); setSelectedProductId(null); } };
+  const handleProductClick = (id: number) => { setSelectedProductId(id); };
+  const handleBackToList = () => { setSelectedProductId(null); };
 
   const processedProducts = (() => {
     let result = products;
@@ -509,102 +542,30 @@ export default function App() {
 
   const favoriteProducts = products.filter(product => favoriteIds.includes(product.id));
   const currentCategoryName = categories.find(c => c.slug === selectedCategory)?.name || 'Productos Populares';
-  const selectedProduct = selectedProductId ? products.find(p => p.id === selectedProductId) : null;
-
+  
   const renderMainContent = () => {
-      if (loading) {
-        return (
-            <>
-                <div className="h-[288px] bg-gray-200 rounded-2xl mb-10 animate-pulse"></div>
-                <CategoryHighlightsSkeleton />
-                <div className="flex justify-between items-center mb-6">
-                    <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse"></div>
-                    <div className="h-9 bg-gray-200 rounded-lg w-32 animate-pulse"></div>
+      if (loading) { /* Skeleton loading UI */ return ( <> <div className="h-[288px] bg-gray-200 rounded-2xl mb-10 animate-pulse"></div> <CategoryHighlightsSkeleton /> <div className="flex justify-between items-center mb-6"> <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse"></div> <div className="h-9 bg-gray-200 rounded-lg w-32 animate-pulse"></div> </div> <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"> {[...Array(8)].map((_, i) => <ProductCardSkeleton key={i} />)} </div> </> ); }
+      if (error) { /* Error UI */ return ( <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm"> <ServerCrash className="mx-auto h-12 w-12 text-red-400" /> <h3 className="mt-2 text-lg font-medium text-gray-900">¡Oh, no! Algo salió mal.</h3> <p className="mt-1 text-sm text-gray-500">{error}</p> <p className="mt-1 text-sm text-gray-500">Por favor, intenta recargar la página.</p> </div> ) }
+
+      if (selectedProductId) { return ( <ProductDetailView productId={selectedProductId} isFavorite={favoriteIds.includes(selectedProductId)} onToggleFavorite={handleToggleFavorite} onBack={handleBackToList} categories={categories} /> ); }
+      
+      const mainGrid = (
+        <>
+            <ProductGrid products={processedProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} onProductClick={handleProductClick} />
+            {products.length < totalProducts && !searchTerm && !selectedCategory && (
+                <div className="text-center mt-10">
+                    <button onClick={handleLoadMore} disabled={isLoadingMore} className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-full hover:bg-indigo-700 transition-colors disabled:bg-indigo-300 flex items-center gap-2 mx-auto">
+                        {isLoadingMore ? <><LoaderCircle size={20} className="animate-spin" /> <span>Cargando...</span></> : 'Cargar Más Productos'}
+                    </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {[...Array(8)].map((_, i) => <ProductCardSkeleton key={i} />)}
-                </div>
-            </>
-        );
-      }
-      
-      if (error) {
-        return (
-            <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm">
-                <ServerCrash className="mx-auto h-12 w-12 text-red-400" />
-                <h3 className="mt-2 text-lg font-medium text-gray-900">¡Oh, no! Algo salió mal.</h3>
-                <p className="mt-1 text-sm text-gray-500">{error}</p>
-                <p className="mt-1 text-sm text-gray-500">Por favor, intenta recargar la página.</p>
-            </div>
-        )
-      }
+            )}
+        </>
+    );
 
-      if (selectedProduct) {
-          return (
-              <ProductDetailView 
-                product={selectedProduct}
-                isFavorite={favoriteIds.includes(selectedProduct.id)}
-                onToggleFavorite={handleToggleFavorite}
-                onBack={handleBackToList}
-                categories={categories}
-              />
-          );
-      }
-      
-      if (currentView === 'home' && !selectedCategory) {
-          return (
-              <>
-                  <HeroBanner onExploreClick={handleExploreOffers} />
-                  <CategoryHighlights categories={categories} selectedCategory={selectedCategory} onCategorySelect={handleSelectCategory} />
-                  <div ref={productsSectionRef} className="flex justify-between items-center mb-6">
-                      <h1 className="text-2xl font-bold text-gray-900">Productos Populares</h1>
-                      <SortDropdown currentSort={sortOption} onSortChange={setSortOption} />
-                  </div>
-                  <ProductGrid products={processedProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} onProductClick={handleProductClick} />
-              </>
-          );
-      }
-
-      if (currentView === 'home' && selectedCategory) {
-          return (
-              <CategoryProductsView
-                categoryName={currentCategoryName}
-                products={processedProducts}
-                favoriteIds={favoriteIds}
-                onToggleFavorite={handleToggleFavorite}
-                onProductClick={handleProductClick}
-                currentSort={sortOption}
-                onSortChange={setSortOption}
-                onNavigateHome={handleNavigateHome}
-              />
-          );
-      }
-
-      if (currentView === 'categories') {
-          return (
-              <CategoriesView categories={categories} onCategorySelect={(slug) => {
-                  setCurrentView('home');
-                  setSelectedCategory(slug);
-              }} />
-          );
-      }
-      
-      if (currentView === 'favorites') {
-          return (
-              <>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-6">Mis Favoritos</h1>
-                  {favoriteProducts.length > 0 ? (
-                      <ProductGrid products={favoriteProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} onProductClick={handleProductClick} />
-                  ) : (
-                      <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm">
-                          <Frown className="mx-auto h-12 w-12 text-gray-400" />
-                          <h3 className="mt-2 text-lg font-medium text-gray-900">Aún no tienes favoritos</h3>
-                          <p className="mt-1 text-sm text-gray-500">Haz clic en el corazón de un producto para guardarlo aquí.</p>
-                      </div>
-                  )}
-              </>
-          );
-      }
+      if (currentView === 'home' && !selectedCategory) { return ( <> <HeroBanner onExploreClick={handleExploreOffers} /> <CategoryHighlights categories={categories} selectedCategory={selectedCategory} onCategorySelect={handleSelectCategory} /> <div ref={productsSectionRef} className="flex justify-between items-center mb-6"> <h1 className="text-2xl font-bold text-gray-900">Productos Populares</h1> <SortDropdown currentSort={sortOption} onSortChange={setSortOption} /> </div> {mainGrid} </> ); }
+      if (currentView === 'home' && selectedCategory) { return ( <CategoryProductsView categoryName={currentCategoryName} products={processedProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} onProductClick={handleProductClick} currentSort={sortOption} onSortChange={setSortOption} onNavigateHome={handleNavigateHome} /> ); }
+      if (currentView === 'categories') { return ( <CategoriesView categories={categories} onCategorySelect={(slug) => { setCurrentView('home'); setSelectedCategory(slug); }} /> ); }
+      if (currentView === 'favorites') { return ( <> <h1 className="text-2xl font-bold text-gray-900 mb-6">Mis Favoritos</h1> {favoriteProducts.length > 0 ? ( <ProductGrid products={favoriteProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} onProductClick={handleProductClick} /> ) : ( <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm"> <Frown className="mx-auto h-12 w-12 text-gray-400" /> <h3 className="mt-2 text-lg font-medium text-gray-900">Aún no tienes favoritos</h3> <p className="mt-1 text-sm text-gray-500">Haz clic en el corazón de un producto para guardarlo aquí.</p> </div> )} </> ); }
 
       return <div>Vista no implementada</div>;
   };
@@ -625,5 +586,4 @@ export default function App() {
     </div>
   );
 }
-
 
