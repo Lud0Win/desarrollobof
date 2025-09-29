@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Logo = () => (
     <a href="#" className="flex items-center gap-2 shrink-0">
       <div className="bg-indigo-600 p-2 rounded-lg shadow-md">
