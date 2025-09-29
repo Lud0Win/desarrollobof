@@ -1,5 +1,3 @@
-import React from 'react';
-
 const ProductCardSkeleton = () => (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 animate-pulse">
         <div className="bg-gray-200 w-full h-48"></div>
