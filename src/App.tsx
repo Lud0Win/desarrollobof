@@ -1,7 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown, Frown, Smartphone, Headphones, Laptop, Mouse, Check, Star, Zap } from 'lucide-react';
+import { Search, Menu, X, Home, LayoutGrid, Heart, User, ChevronDown, Frown, Smartphone, Headphones, Laptop, Mouse, Check, Star, Zap, ArrowLeft, ShieldCheck, Truck, ShoppingCart, ServerCrash } from 'lucide-react';
 
-// Interfaz para definir la estructura de un producto
+// --- INTERFACES Y DATOS ---
+
+interface StorePrice {
+    store: string;
+    logo: string;
+    price: number;
+    shipping: string;
+    url: string;
+}
+
+interface Category {
+    name: string;
+    icon: keyof typeof iconComponents; // Usaremos el nombre del icono para buscarlo dinámicamente
+    slug: string;
+}
+
 interface Product {
   id: number;
   name: string;
@@ -12,101 +27,22 @@ interface Product {
   rating: number;
   reviewCount: number;
   category: string;
+  description: string;
+  storePrices: StorePrice[];
 }
 
-// Datos de ejemplo para los productos
-const mockProducts: Product[] = [
-  {
-    id: 1,
-    name: 'Apple iPhone 14 Pro',
-    image: 'https://placehold.co/600x600/E5E7EB/333?text=iPhone+14',
-    price: 999.99,
-    originalPrice: 1099.99,
-    discount: 9,
-    rating: 4.8,
-    reviewCount: 1250,
-    category: 'tech',
-  },
-  {
-    id: 2,
-    name: 'Sony WH-1000XM5 Headphones',
-    image: 'https://placehold.co/600x600/E5E7EB/333?text=Sony+XM5',
-    price: 349.99,
-    rating: 4.9,
-    reviewCount: 2340,
-    category: 'audio',
-  },
-  {
-    id: 3,
-    name: 'Samsung Galaxy Watch 6',
-    image: 'https://placehold.co/600x600/E5E7EB/333?text=Watch+6',
-    price: 279.99,
-    originalPrice: 329.99,
-    discount: 15,
-    rating: 4.6,
-    reviewCount: 890,
-    category: 'tech',
-  },
-  {
-    id: 4,
-    name: 'Dell XPS 15 Laptop',
-    image: 'https://placehold.co/600x600/E5E7EB/333?text=Dell+XPS',
-    price: 1499.99,
-    rating: 4.7,
-    reviewCount: 450,
-    category: 'laptops',
-  },
-  {
-    id: 5,
-    name: 'Logitech MX Master 3S Mouse',
-    image: 'https://placehold.co/600x600/E5E7EB/333?text=MX+Master',
-    price: 99.99,
-    originalPrice: 119.99,
-    discount: 17,
-    rating: 4.9,
-    reviewCount: 3120,
-    category: 'accessories',
-  },
-  {
-    id: 6,
-    name: 'Kindle Paperwhite',
-    image: 'https://placehold.co/600x600/E5E7EB/333?text=Kindle',
-    price: 139.99,
-    rating: 4.8,
-    reviewCount: 15800,
-    category: 'tech',
-  },
-  {
-    id: 7,
-    name: 'GoPro HERO11 Black',
-    image: 'https://placehold.co/600x600/E5E7EB/333?text=GoPro',
-    price: 399.99,
-    originalPrice: 499.99,
-    discount: 20,
-    rating: 4.7,
-    reviewCount: 780,
-    category: 'accessories',
-  },
-  {
-    id: 8,
-    name: 'Nespresso VertuoPlus',
-    image: 'https://placehold.co/600x600/E5E7EB/333?text=Nespresso',
-    price: 159.00,
-    rating: 4.6,
-    reviewCount: 950,
-    category: 'home',
-  },
-];
+// Mapeo de nombres de iconos a componentes de Lucide
+const iconComponents = {
+    Smartphone,
+    Headphones,
+    Laptop,
+    Mouse,
+    Home,
+    LayoutGrid
+};
 
-const mockCategories = [
-    { name: 'Tecnología', icon: Smartphone, slug: 'tech' },
-    { name: 'Audio', icon: Headphones, slug: 'audio' },
-    { name: 'Portátiles', icon: Laptop, slug: 'laptops' },
-    { name: 'Accesorios', icon: Mouse, slug: 'accessories' },
-    { name: 'Hogar', icon: Home, slug: 'home' }
-];
 
-type View = 'home' | 'categories' | 'favorites' | 'account';
+type View = 'home' | 'categories' | 'favorites' | 'account' | 'product-detail';
 type SortOption = 'default' | 'price-asc' | 'price-desc' | 'rating-desc';
 
 const sortOptions: { value: SortOption; label: string }[] = [
@@ -117,13 +53,39 @@ const sortOptions: { value: SortOption; label: string }[] = [
 ];
 
 
+// --- COMPONENTES DE CARGA (SKELETONS) ---
+
+const ProductCardSkeleton = () => (
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 animate-pulse">
+        <div className="bg-gray-200 w-full h-48"></div>
+        <div className="p-4">
+            <div className="h-5 bg-gray-200 rounded w-3/4 mb-3"></div>
+            <div className="h-7 bg-gray-200 rounded w-1/2 mb-4"></div>
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+        </div>
+    </div>
+);
+
+const CategoryHighlightsSkeleton = () => (
+    <div className="mb-10">
+        <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
+            {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-28 h-28 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 animate-pulse">
+                    <div className="h-12 w-12 bg-gray-200 rounded-full mx-auto"></div>
+                    <div className="h-3 bg-gray-200 rounded mt-3 w-16 mx-auto"></div>
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
+
 // --- COMPONENTES ---
 
-// Componente del Logo
 const Logo = () => (
     <a href="#" className="flex items-center gap-2 shrink-0">
       <div className="bg-indigo-600 p-2 rounded-lg shadow-md">
-        <svg className="w-5 h-5 text-white" xmlns="http://www.w.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+        <svg className="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
       </div>
       <span className="text-2xl font-extrabold text-gray-800 tracking-tight">
         Compara<span className="text-indigo-500">Precios</span>
@@ -131,7 +93,6 @@ const Logo = () => (
     </a>
 );
 
-// Componente Hero Banner
 const HeroBanner: React.FC<{ onExploreClick: () => void }> = ({ onExploreClick }) => (
     <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 md:p-12 mb-10 text-white shadow-lg relative overflow-hidden">
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full"></div>
@@ -145,12 +106,12 @@ const HeroBanner: React.FC<{ onExploreClick: () => void }> = ({ onExploreClick }
     </div>
 );
   
-// Componente para la tarjeta de producto
 const ProductCard: React.FC<{ 
   product: Product;
   isFavorite: boolean;
   onToggleFavorite: (id: number) => void;
-}> = ({ product, isFavorite, onToggleFavorite }) => {
+  onProductClick: (id: number) => void;
+}> = ({ product, isFavorite, onToggleFavorite, onProductClick }) => {
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onToggleFavorite(product.id);
@@ -158,7 +119,7 @@ const ProductCard: React.FC<{
   return (
     <div 
       className="bg-white rounded-2xl shadow-sm overflow-hidden group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer border border-gray-100"
-      onClick={() => alert(`Navegando a los detalles de: ${product.name}`)}
+      onClick={() => onProductClick(product.id)}
     >
       <div className="relative">
         <img src={product.image} alt={product.name} className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"/>
@@ -179,7 +140,7 @@ const ProductCard: React.FC<{
         </div>
         <div className="mt-3 flex items-center text-sm text-gray-600">
            <div className="flex items-center gap-1">
-            <Star size={16} className="text-yellow-400" />
+            <Star size={16} className="text-yellow-400 fill-yellow-400" />
             <span className="font-bold text-gray-800">{product.rating}</span>
            </div>
           <span className="ml-2">({product.reviewCount} reseñas)</span>
@@ -189,7 +150,6 @@ const ProductCard: React.FC<{
   );
 };
 
-// Componente para la barra lateral
 const Sidebar: React.FC<{ 
     isOpen: boolean; 
     onClose: () => void;
@@ -219,7 +179,6 @@ const Sidebar: React.FC<{
     );
 };
 
-// Componente para la cabecera
 const Header: React.FC<{ 
   onMenuClick: () => void;
   searchTerm: string;
@@ -246,25 +205,24 @@ const Header: React.FC<{
     </header>
 );
 
-// Componente reutilizable para la cuadrícula de productos
-const ProductGrid: React.FC<{ products: Product[]; favoriteIds: number[]; onToggleFavorite: (id: number) => void;}> = ({ products, favoriteIds, onToggleFavorite }) => (
+const ProductGrid: React.FC<{ products: Product[]; favoriteIds: number[]; onToggleFavorite: (id: number) => void; onProductClick: (id: number) => void;}> = ({ products, favoriteIds, onToggleFavorite, onProductClick }) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {products.map((product) => (<ProductCard key={product.id} product={product} isFavorite={favoriteIds.includes(product.id)} onToggleFavorite={onToggleFavorite}/>))}
+        {products.map((product) => (<ProductCard key={product.id} product={product} isFavorite={favoriteIds.includes(product.id)} onToggleFavorite={onToggleFavorite} onProductClick={onProductClick}/>))}
     </div>
 );
 
-// Componente para la sección de categorías en la página de inicio
-const CategoryHighlights: React.FC<{ selectedCategory: string | null; onCategorySelect: (slug: string | null) => void; }> = ({ selectedCategory, onCategorySelect }) => {
-    const categories = [{ name: 'Todos', icon: LayoutGrid, slug: null }, ...mockCategories];
+const CategoryHighlights: React.FC<{ categories: Category[], selectedCategory: string | null; onCategorySelect: (slug: string | null) => void; }> = ({ categories, selectedCategory, onCategorySelect }) => {
+    const allCategories = [{ name: 'Todos', icon: 'LayoutGrid' as const, slug: null }, ...categories];
     return (
         <div className="mb-10">
             <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
-                {categories.map(category => {
+                {allCategories.map(category => {
                     const isSelected = selectedCategory === category.slug;
+                    const Icon = iconComponents[category.icon] || LayoutGrid;
                     return (
                         <button key={category.slug || 'all'} onClick={() => onCategorySelect(category.slug)} className={`flex-shrink-0 flex flex-col items-center justify-center p-4 w-28 h-28 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border group ${isSelected ? 'bg-indigo-600 text-white shadow-lg -translate-y-1' : 'bg-white border-gray-100'}`}>
                             <div className={`flex items-center justify-center h-12 w-12 rounded-full transition-colors duration-300 ${isSelected ? 'bg-white' : 'bg-indigo-100 group-hover:bg-indigo-500'}`}>
-                                <category.icon size={24} className={`transition-colors duration-300 ${isSelected ? 'text-indigo-600' : 'text-indigo-600 group-hover:text-white'}`} />
+                                <Icon size={24} className={`transition-colors duration-300 ${isSelected ? 'text-indigo-600' : 'text-indigo-600 group-hover:text-white'}`} />
                             </div>
                             <span className={`mt-2 text-sm font-semibold truncate transition-colors duration-300 ${isSelected ? 'text-white' : 'text-gray-800'}`}>{category.name}</span>
                         </button>
@@ -275,7 +233,6 @@ const CategoryHighlights: React.FC<{ selectedCategory: string | null; onCategory
     );
 };
 
-// Componente para el menú desplegable de ordenamiento
 const SortDropdown: React.FC<{ currentSort: SortOption; onSortChange: (option: SortOption) => void; }> = ({ currentSort, onSortChange }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -301,33 +258,35 @@ const SortDropdown: React.FC<{ currentSort: SortOption; onSortChange: (option: S
     );
 };
 
-// Componente para la vista de la página de Categorías
-const CategoriesView: React.FC<{ onCategorySelect: (slug: string) => void; }> = ({ onCategorySelect }) => (
+const CategoriesView: React.FC<{ categories: Category[]; onCategorySelect: (slug: string) => void; }> = ({ categories, onCategorySelect }) => (
     <div>
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Explorar Categorías</h1>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {mockCategories.map(category => (
-                <button key={category.slug} onClick={() => onCategorySelect(category.slug)} className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group">
-                    <div className="flex items-center justify-center h-20 w-20 bg-indigo-100 rounded-full group-hover:bg-indigo-500 transition-colors duration-300">
-                        <category.icon size={40} className="text-indigo-600 group-hover:text-white transition-colors duration-300" />
-                    </div>
-                    <span className="mt-4 text-base font-semibold text-gray-800">{category.name}</span>
-                </button>
-            ))}
+            {categories.map(category => {
+                const Icon = iconComponents[category.icon] || LayoutGrid;
+                return (
+                    <button key={category.slug} onClick={() => onCategorySelect(category.slug)} className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 group">
+                        <div className="flex items-center justify-center h-20 w-20 bg-indigo-100 rounded-full group-hover:bg-indigo-500 transition-colors duration-300">
+                            <Icon size={40} className="text-indigo-600 group-hover:text-white transition-colors duration-300" />
+                        </div>
+                        <span className="mt-4 text-base font-semibold text-gray-800">{category.name}</span>
+                    </button>
+                )
+            })}
         </div>
     </div>
 );
 
-// Componente para la vista de productos de una categoría específica
 const CategoryProductsView: React.FC<{
   categoryName: string;
   products: Product[];
   favoriteIds: number[];
   onToggleFavorite: (id: number) => void;
+  onProductClick: (id: number) => void;
   currentSort: SortOption;
   onSortChange: (option: SortOption) => void;
   onNavigateHome: () => void;
-}> = ({ categoryName, products, favoriteIds, onToggleFavorite, currentSort, onSortChange, onNavigateHome }) => (
+}> = ({ categoryName, products, favoriteIds, onToggleFavorite, onProductClick, currentSort, onSortChange, onNavigateHome }) => (
   <div>
     <div className="mb-4 text-sm text-gray-500">
       <button onClick={onNavigateHome} className="hover:text-indigo-600 font-medium">Inicio</button>
@@ -338,17 +297,119 @@ const CategoryProductsView: React.FC<{
       <h1 className="text-3xl font-bold text-gray-900">{categoryName}</h1>
       <SortDropdown currentSort={currentSort} onSortChange={onSortChange} />
     </div>
-    <ProductGrid products={products} favoriteIds={favoriteIds} onToggleFavorite={onToggleFavorite} />
+    <ProductGrid products={products} favoriteIds={favoriteIds} onToggleFavorite={onToggleFavorite} onProductClick={onProductClick} />
   </div>
 );
 
+const PriceComparisonList: React.FC<{ prices: StorePrice[] }> = ({ prices }) => {
+    const sortedPrices = [...prices].sort((a, b) => a.price - b.price);
+    return (
+        <div className="mt-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Comparar Precios</h2>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+                {sortedPrices.map((item, index) => (
+                    <div key={item.store} className={`p-4 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 transition-all duration-300 ${index === 0 ? 'bg-green-50 border-2 border-green-500' : 'bg-gray-50'}`}>
+                        <div className="flex items-center gap-4 w-full sm:w-auto">
+                            <img src={item.logo} alt={`${item.store} logo`} className="h-8 object-contain"/>
+                            <div className="sm:hidden">
+                                {index === 0 && <span className="text-xs font-bold text-green-700 bg-green-200 px-2 py-0.5 rounded-full">Mejor Precio</span>}
+                            </div>
+                        </div>
+                        <div className="flex-1 text-center sm:text-left">
+                           <span className="text-gray-600 text-sm">{item.shipping}</span>
+                        </div>
+                        <div className="flex items-center gap-6 w-full sm:w-auto">
+                           <span className="text-xl font-bold text-gray-800">${item.price.toFixed(2)}</span>
+                           <a href={item.url} target="_blank" rel="noopener noreferrer" className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-full hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm">
+                               <ShoppingCart size={16}/>
+                               Ir a la tienda
+                           </a>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
 
-// Componente principal de la aplicación
+const ProductDetailView: React.FC<{
+    product: Product;
+    isFavorite: boolean;
+    onToggleFavorite: (id: number) => void;
+    onBack: () => void;
+    categories: Category[];
+}> = ({ product, isFavorite, onToggleFavorite, onBack, categories }) => {
+    const categoryName = categories.find(c => c.slug === product.category)?.name;
+    const priceListRef = useRef<HTMLDivElement>(null);
+    const handleCompareClick = () => {
+        priceListRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    return (
+        <div>
+            <div className="mb-4 text-sm text-gray-500">
+                <button onClick={onBack} className="hover:text-indigo-600 font-medium">Inicio</button>
+                {categoryName && (
+                    <>
+                        <span className="mx-2">/</span>
+                        <button onClick={onBack} className="hover:text-indigo-600 font-medium">{categoryName}</button>
+                    </>
+                )}
+            </div>
+            <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                    <img src={product.image} alt={product.name} className="w-full h-auto object-cover rounded-lg"/>
+                </div>
+                <div>
+                    <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">{product.name}</h1>
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="flex items-center gap-1">
+                            <Star size={18} className="text-yellow-400 fill-yellow-400" />
+                            <span className="font-bold text-gray-800">{product.rating}</span>
+                            <span className="text-gray-600">({product.reviewCount} reseñas)</span>
+                        </div>
+                    </div>
+                    <p className="text-gray-600 mb-6">{product.description}</p>
+                    <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+                       <span className="text-sm text-gray-600">Mejor precio encontrado</span>
+                        <div className="flex items-baseline gap-3">
+                           <span className="text-4xl font-extrabold text-gray-900">${product.price.toFixed(2)}</span>
+                           {product.originalPrice && (
+                               <span className="text-xl text-gray-500 line-through">${product.originalPrice.toFixed(2)}</span>
+                           )}
+                        </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                        <button onClick={handleCompareClick} className="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-full hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">Comparar Precios</button>
+                        <button onClick={() => onToggleFavorite(product.id)} className="w-full bg-white border-2 border-indigo-200 text-indigo-600 font-bold py-3 px-6 rounded-full hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2">
+                           <Heart size={20} className={`${isFavorite ? 'fill-current' : ''}`}/> {isFavorite ? 'En Favoritos' : 'Añadir a Favoritos'}
+                        </button>
+                    </div>
+                    <div className="space-y-3 text-sm text-gray-600">
+                        <div className="flex items-center gap-2"><ShieldCheck size={18} className="text-green-500" /><span>Garantía de compra segura</span></div>
+                        <div className="flex items-center gap-2"><Truck size={18} className="text-blue-500" /><span>Opciones de envío disponibles</span></div>
+                    </div>
+                </div>
+            </div>
+            <div ref={priceListRef}>
+                <PriceComparisonList prices={product.storePrices || []} />
+            </div>
+        </div>
+    );
+};
+
+
+// --- COMPONENTE PRINCIPAL ---
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [products] = useState(mockProducts); 
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const [currentView, setCurrentView] = useState<View>('home');
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>('default');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const productsSectionRef = useRef<HTMLDivElement>(null);
@@ -359,6 +420,36 @@ export default function App() {
       return storedFavorites ? JSON.parse(storedFavorites) : [];
     } catch (error) { console.error("Error al leer favoritos de localStorage", error); return []; }
   });
+  
+  // Fetch data from API on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const [productsResponse, categoriesResponse] = await Promise.all([
+                fetch('https://mi-api-supabase.vercel.app/products'),
+                fetch('https://mi-api-supabase.vercel.app/categories')
+            ]);
+            
+            if (!productsResponse.ok || !categoriesResponse.ok) {
+                throw new Error('No se pudo conectar con la API.');
+            }
+
+            const productsData = await productsResponse.json();
+            const categoriesData = await categoriesResponse.json();
+            
+            setProducts(productsData);
+            setCategories(categoriesData);
+            setError(null);
+        } catch (err: any) {
+            setError(err.message || 'Ocurrió un error inesperado.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchData();
+  }, []);
 
   useEffect(() => {
     try { window.localStorage.setItem('favoriteProducts', JSON.stringify(favoriteIds)); } 
@@ -376,10 +467,12 @@ export default function App() {
   const handleNavigateHome = () => {
     setCurrentView('home');
     setSelectedCategory(null);
+    setSelectedProductId(null);
   };
   
   const handleSelectCategory = (slug: string | null) => {
       setSelectedCategory(slug);
+      setSelectedProductId(null); 
   };
 
   const handleNavigate = (view: View) => {
@@ -387,9 +480,17 @@ export default function App() {
           handleNavigateHome();
       } else {
           setCurrentView(view);
-          // Opcional: limpiar la categoría si se navega a otra sección principal
           setSelectedCategory(null);
+          setSelectedProductId(null);
       }
+  };
+  
+  const handleProductClick = (id: number) => {
+    setSelectedProductId(id);
+  };
+  
+  const handleBackToList = () => {
+      setSelectedProductId(null);
   };
 
   const processedProducts = (() => {
@@ -407,19 +508,59 @@ export default function App() {
   })();
 
   const favoriteProducts = products.filter(product => favoriteIds.includes(product.id));
-  const currentCategoryName = mockCategories.find(c => c.slug === selectedCategory)?.name || 'Productos Populares';
+  const currentCategoryName = categories.find(c => c.slug === selectedCategory)?.name || 'Productos Populares';
+  const selectedProduct = selectedProductId ? products.find(p => p.id === selectedProductId) : null;
 
   const renderMainContent = () => {
+      if (loading) {
+        return (
+            <>
+                <div className="h-[288px] bg-gray-200 rounded-2xl mb-10 animate-pulse"></div>
+                <CategoryHighlightsSkeleton />
+                <div className="flex justify-between items-center mb-6">
+                    <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+                    <div className="h-9 bg-gray-200 rounded-lg w-32 animate-pulse"></div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {[...Array(8)].map((_, i) => <ProductCardSkeleton key={i} />)}
+                </div>
+            </>
+        );
+      }
+      
+      if (error) {
+        return (
+            <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm">
+                <ServerCrash className="mx-auto h-12 w-12 text-red-400" />
+                <h3 className="mt-2 text-lg font-medium text-gray-900">¡Oh, no! Algo salió mal.</h3>
+                <p className="mt-1 text-sm text-gray-500">{error}</p>
+                <p className="mt-1 text-sm text-gray-500">Por favor, intenta recargar la página.</p>
+            </div>
+        )
+      }
+
+      if (selectedProduct) {
+          return (
+              <ProductDetailView 
+                product={selectedProduct}
+                isFavorite={favoriteIds.includes(selectedProduct.id)}
+                onToggleFavorite={handleToggleFavorite}
+                onBack={handleBackToList}
+                categories={categories}
+              />
+          );
+      }
+      
       if (currentView === 'home' && !selectedCategory) {
           return (
               <>
                   <HeroBanner onExploreClick={handleExploreOffers} />
-                  <CategoryHighlights selectedCategory={selectedCategory} onCategorySelect={handleSelectCategory} />
+                  <CategoryHighlights categories={categories} selectedCategory={selectedCategory} onCategorySelect={handleSelectCategory} />
                   <div ref={productsSectionRef} className="flex justify-between items-center mb-6">
                       <h1 className="text-2xl font-bold text-gray-900">Productos Populares</h1>
                       <SortDropdown currentSort={sortOption} onSortChange={setSortOption} />
                   </div>
-                  <ProductGrid products={processedProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} />
+                  <ProductGrid products={processedProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} onProductClick={handleProductClick} />
               </>
           );
       }
@@ -431,6 +572,7 @@ export default function App() {
                 products={processedProducts}
                 favoriteIds={favoriteIds}
                 onToggleFavorite={handleToggleFavorite}
+                onProductClick={handleProductClick}
                 currentSort={sortOption}
                 onSortChange={setSortOption}
                 onNavigateHome={handleNavigateHome}
@@ -440,7 +582,7 @@ export default function App() {
 
       if (currentView === 'categories') {
           return (
-              <CategoriesView onCategorySelect={(slug) => {
+              <CategoriesView categories={categories} onCategorySelect={(slug) => {
                   setCurrentView('home');
                   setSelectedCategory(slug);
               }} />
@@ -452,7 +594,7 @@ export default function App() {
               <>
                   <h1 className="text-2xl font-bold text-gray-900 mb-6">Mis Favoritos</h1>
                   {favoriteProducts.length > 0 ? (
-                      <ProductGrid products={favoriteProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} />
+                      <ProductGrid products={favoriteProducts} favoriteIds={favoriteIds} onToggleFavorite={handleToggleFavorite} onProductClick={handleProductClick} />
                   ) : (
                       <div className="text-center py-16 px-6 bg-white rounded-lg shadow-sm">
                           <Frown className="mx-auto h-12 w-12 text-gray-400" />
@@ -464,7 +606,6 @@ export default function App() {
           );
       }
 
-      // Placeholder for other views like 'account'
       return <div>Vista no implementada</div>;
   };
 
