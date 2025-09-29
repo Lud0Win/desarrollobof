@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Frown, ServerCrash, LoaderCircle } from 'lucide-react';
 
 import { Product, Category, View, SortOption, PaginatedResponse } from './types';
@@ -295,4 +295,5 @@ export default function App() {
     </div>
   );
 }
+
 
