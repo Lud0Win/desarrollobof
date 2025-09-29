@@ -1,5 +1,3 @@
-import React from 'react';
-
 const CategoryHighlightsSkeleton = () => (
     <div className="mb-10">
         <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
